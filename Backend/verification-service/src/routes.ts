@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { logVerification, getVerificationLogs } from './db';
+import axios from 'axios';
 
 const router = Router();
 
@@ -17,22 +18,45 @@ const issuedCredentials = new Map<string, {
   worker_id: string;
 }>();
 
-router.post('/verify', (req: Request, res: Response) => {
+router.post('/verify', async (req: Request, res: Response) => {
   try {
     const cred: CredentialRequest = req.body;
-    
+
     if (!cred || !cred.id) {
-      return res.status(400).json({ 
-        error: 'credential must include id field' 
+      return res.status(400).json({
+        error: 'credential must include id field'
       });
     }
 
     const worker = process.env.WORKER_ID || 'worker-unknown';
-    const found = issuedCredentials.get(cred.id);
+    
+    // First check local cache
+    let found = issuedCredentials.get(cred.id);
+    
+    // If not found locally, try to sync from issuance service
+    if (!found) {
+      try {
+        const issuanceUrl = process.env.ISSUANCE_SERVICE_URL || 'http://issuance-service:3001';
+        const response = await axios.post(`${issuanceUrl}/issue`, cred);
+        
+        if (response.status === 200 && response.data.message === 'credential already issued') {
+          // Credential exists, add to local cache
+          found = {
+            id: cred.id,
+            payload: cred,
+            issued_at: response.data.issued_at,
+            worker_id: response.data.worker
+          };
+          issuedCredentials.set(cred.id, found);
+        }
+      } catch (error) {
+        console.log('Could not sync with issuance service:', error instanceof Error ? error.message : 'Unknown error');
+      }
+    }
 
     if (!found) {
       logVerification(cred.id, worker, 'invalid');
-      return res.status(404).json({ 
+      return res.status(404).json({
         valid: false,
         message: 'credential not found',
         worker
@@ -40,9 +64,9 @@ router.post('/verify', (req: Request, res: Response) => {
     }
 
     logVerification(cred.id, worker, 'valid');
-    
-    return res.json({ 
-      valid: true, 
+
+    return res.json({
+      valid: true,
       worker,
       issued_at: found.issued_at,
       issued_by: found.worker_id,
@@ -50,8 +74,8 @@ router.post('/verify', (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Error verifying credential:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error' 
+    return res.status(500).json({
+      error: 'Internal server error'
     });
   }
 });
@@ -60,22 +84,22 @@ router.post('/verify', (req: Request, res: Response) => {
 router.post('/sync-credential', (req: Request, res: Response) => {
   try {
     const { id, payload, issued_at, worker_id } = req.body;
-    
+
     if (!id || !payload || !issued_at || !worker_id) {
-      return res.status(400).json({ 
-        error: 'Missing required fields' 
+      return res.status(400).json({
+        error: 'Missing required fields'
       });
     }
 
     issuedCredentials.set(id, { id, payload, issued_at, worker_id });
-    
-    return res.json({ 
-      message: 'credential synced successfully' 
+
+    return res.json({
+      message: 'credential synced successfully'
     });
   } catch (error) {
     console.error('Error syncing credential:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error' 
+    return res.status(500).json({
+      error: 'Internal server error'
     });
   }
 });
@@ -86,15 +110,15 @@ router.get('/logs', (req: Request, res: Response) => {
     return res.json({ logs });
   } catch (error) {
     console.error('Error fetching logs:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error' 
+    return res.status(500).json({
+      error: 'Internal server error'
     });
   }
 });
 
 router.get('/health', (req: Request, res: Response) => {
-  res.json({ 
-    status: 'healthy', 
+  res.json({
+    status: 'healthy',
     service: 'verification-service',
     worker: process.env.WORKER_ID || 'worker-unknown'
   });

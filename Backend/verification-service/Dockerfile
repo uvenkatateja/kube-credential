@@ -3,8 +3,8 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* ./
-RUN npm ci --legacy-peer-deps
+COPY package.json ./
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -17,10 +17,10 @@ WORKDIR /app
 
 # Copy built application
 COPY --from=build /app/dist ./dist
-COPY package.json package-lock.json* ./
+COPY package.json ./
 
 # Install production dependencies
-RUN npm ci --production --legacy-peer-deps
+RUN npm install --production
 
 # Environment variables
 ENV PORT=3002

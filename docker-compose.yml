@@ -9,6 +9,7 @@ services:
       - PORT=3001
       - DB_PATH=/data/issuance.db
       - NODE_ENV=production
+      - WORKER_ID=issuance-worker-1
     volumes:
       - issuance_data:/data
     restart: unless-stopped
@@ -26,6 +27,7 @@ services:
       - PORT=3002
       - DB_PATH=/data/verification.db
       - NODE_ENV=production
+      - WORKER_ID=verification-worker-1
       - ISSUANCE_SERVICE_URL=http://issuance-service:3001
     volumes:
       - verification_data:/data
