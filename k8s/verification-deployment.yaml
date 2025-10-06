@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: verification-service
+  namespace: kube-credential
+  labels:
+    app: verification-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: verification-service
+  template:
+    metadata:
+      labels:
+        app: verification-service
+    spec:
+      containers:
+      - name: verification-service
+        image: verification-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3002
+        env:
+        - name: PORT
+          value: "3002"
+        - name: DB_PATH
+          value: "/data/verification.db"
+        - name: WORKER_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: ISSUANCE_SERVICE_URL
+          value: "http://issuance-service:3001"
+        volumeMounts:
+        - name: data-volume
+          mountPath: /data
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: verification-pvc

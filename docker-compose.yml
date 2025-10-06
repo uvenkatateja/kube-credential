@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  issuance-service:
+    build: ./Backend/issuance-service
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - DB_PATH=/data/issuance.db
+      - NODE_ENV=production
+    volumes:
+      - issuance_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  verification-service:
+    build: ./Backend/verification-service
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - DB_PATH=/data/verification.db
+      - NODE_ENV=production
+      - ISSUANCE_SERVICE_URL=http://issuance-service:3001
+    volumes:
+      - verification_data:/data
+    restart: unless-stopped
+    depends_on:
+      - issuance-service
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  issuance_data:
+  verification_data:
