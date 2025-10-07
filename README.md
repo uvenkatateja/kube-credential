@@ -223,17 +223,19 @@ kubectl get services -n kube-credential
 
 ### Step 5: Frontend Deployment (S3)
 
+**Live Frontend URL**: http://kube-credential-frontend-uvenkatateja.s3-website.eu-north-1.amazonaws.com
+
 ```bash
 # Build frontend for production
 cd frontend
 npm run build
 
 # Upload to S3 bucket
-aws s3 mb s3://your-kube-credential-frontend
-aws s3 sync dist/ s3://your-kube-credential-frontend --delete
+aws s3 mb s3://kube-credential-frontend-uvenkatateja
+aws s3 sync dist/ s3://kube-credential-frontend-uvenkatateja --delete
 
 # Enable static website hosting
-aws s3 website s3://your-kube-credential-frontend --index-document index.html
+aws s3 website s3://kube-credential-frontend-uvenkatateja --index-document index.html
 ```
 
 ## API Endpoints
@@ -388,9 +390,9 @@ kubectl exec -it <pod-name> -n kube-credential -- /bin/sh
 
 ## Contact Information
 
-**Developer**: [Your Name]
-**Email**: [your.email@example.com]
-**Phone**: [Your Phone Number]
+**Developer**: Ummadisetty Venkata Teja
+**Email**: uvteja1111@gmail.com
+**Phone**: +91 9959100206
 
 ## License
 
